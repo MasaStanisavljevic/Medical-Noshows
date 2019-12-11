@@ -1,0 +1,461 @@
+---
+title: 'Final Project: Add title here'
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+
+
+$\\$
+
+
+
+## Author:  Masa Stanisavljevic
+
+## Discussants: [Stats Stack Exchange](https://stats.stackexchange.com/), [STAT TREK](https://stattrek.com/hypothesis-test/difference-in-proportions.aspx), [Kaggle Discussion](https://www.kaggle.com/joniarroba/noshowappointments) and ULAs at Office Hours
+
+
+
+
+
+
+<!--  
+This is a template for creating your final project report. It lays out the sections that should be in your write-up and describes a little about these sections. There is some flexibility to deviate from this structure, for example, interweaving more visualizations and analyses could work well. 
+Your report should be between 5-8 pages long and should contain:
+    1) Introduction: 
+      a) what is question you are addressing 
+      b) why is important 
+      c) where you got the data
+      d) description of any other analyses that been done on the data
+      
+    2) Visualizations of the data: one or more plots
+    
+    3) Analyses: models, hypothesis tests, confidence intervals and other inferential statistics that give insight into your question
+    
+    4) Conclusions: What you found, future directions, etc.
+    
+    5) Reflection (do be completed on Canvas)
+       a) What went well 
+       b) What did you struggle with
+       c) What analyses did you do that you are not including, etc. 
+Please make your report look good by paying attention to detail, using additional R Markdown features etc. 
+If there is additional code or data you would like to include with your report, please create a github page and add a link to it in your report. Additionally, you can append the full code for your analysis in an appendix section at the end of the document, and then include only the most important pieces of code in the body of the report. For example, you can exclude details of data cleaning from the body of the report, but include anything of central to your analyses, and also any information about particular choices you made that might affect the results and why you made those choices (e.g., explain if data was excluded and why, etc.). 
+--> 
+
+
+
+
+
+
+
+
+
+
+<!-- There are some options that might help make your document look better.  
+Feel free to add adddtional options here -->
+```{r message=FALSE, warning=FALSE, tidy=TRUE, echo=FALSE}
+    library(knitr)
+    
+    # This makes sure the code is wrapped to fit when it creats a pdf
+    opts_chunk$set(tidy.opts=list(width.cutoff=60))   
+    
+```
+
+
+
+
+
+
+
+$\\$
+
+
+
+
+```{r loading packages, include=FALSE, echo = FALSE}
+
+#load in required packages
+
+install.packages('dplyr')
+install.packages('formatR')
+install.packages('readr')
+install.packages('gridExtra')
+
+library(formatR)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(latex2exp)
+library(gridExtra)
+
+
+
+
+```
+
+
+
+
+## Introduction 
+
+
+Patients not showing up to their appointments is a serious issue in the public health care field. Some studies indicate that missed appointments are linked to worse patient outcomes and impose a significant financial burden to clinics. The severity of this issue is increased by the fact that some clinics report that up to 42% of all appointments result in patient no-show. In order to decrease the rate of absence many clinics implemented SMS reminders, because of the time and cost efficiency of this practice. Moreover, some studies have shown that they are effective in some situations. However, if sending SMS reminders to patients does not increase appointment adherence in this case, there is no point in implementing this practice, no matter how little it costs.  
+$\\$
+I decided to investigate the effectivnes of sending SMS reminders to patients using the ['Medical Appointments No-Show data set'](https://www.kaggle.com/joniarroba/noshowappointments) from Kaggle containing information on scheduled healthcare appointments in Brazil. While multiple versions of the data set were available, I decided to use the most recent one that was updated on May 2016. The dataset contained roughly 110,000 scheduled appointment observations from various clinics, in the city of Vitoria, the capital of the state Espirito Santo, over a 3 month period.  
+$\\$
+While researching the work previously done on this data set, I found a comment in the discussion on Kaggle stating that there is a negative effect of SMS reminders on patient adherence. In the worst case scenario, I would expect that sending SMS reminders has no effect on appointment adherence so this claim seemed very strange. Most of the other analysis done on the data set, that I was able to find, was concerned with predicting whether a given scheduled appointment will result in a patient no-show and they did not provide an explanation for this very counterintuitive finding. Since missed appointments have a severe negaitive effect on a clinic's efficiency, patient-outcomes and cause a significant financial burden to medical institutions, it is of great importance to investigate whether the currently implemented solutions are making the situation worse.   
+
+
+$\\$
+
+
+
+
+
+
+$\\$
+
+
+
+
+
+
+   
+$\\$  
+
+
+
+$\\$
+   
+    
+
+
+
+
+
+
+
+
+    
+## Initial exploration and Data Cleaning
+
+
+
+I changed the names of some of the variables and factors to make them more comprehensible and consistent. The variables 'SMS_received' and 'No-show' were converted to binary values in order to make computation easier in the later stages of analysis. Moreover, information contained in the 'No-show' variable was used to derive a new variable, 'showed_up', in order to make the interpretation of results more intuitive. I also added a variable 'waiting_time' that contains the number of days between the day the appointment was scheduled to the day the appointment was supposed to take place. Several variables that were not of interest were removed from the data set. The data set used in the following analysis consists of variables:    
+
+* patient_id: An unique identifier of a patient
+
+* appointment _id: An unique identifier of an appointment  
+
+* age: Age of the patient who made a given appointment 
+
+* showed-up: 1 if patient showed up to the appointment, 0 if the patient did not show up to the appointment  
+
+* scheduled_date: The date when the appointemnt was scheduled  
+
+* appointment_date: The date when the appointment was supposed to take place  
+
+* SMS_received: 1 if the patient received an SMS reminder about the given appointemnt, 0 if the patient did not receive an SMS reminder about the given appointemnt 
+
+
+
+Cleaning of the data consisted of removing 5 observations with negative entries in the column 'waiting_time', which were most likely a result of a mistake during the scheduling of the appointments. I also removed one observation with a negative entry in the column age.  
+More information about the original data set and the cleaning performed on data including the code can be found in the Appendix and on [GitHub](https://github.com/MasaStanisavljevic/Medical-Noshows).
+
+
+
+```{r cleaning and renaming, message=FALSE, warning=FALSE, tidy=TRUE, include=FALSE}
+
+#load data
+noshows <- read_csv("noshows_data.csv")
+
+
+summary(noshows)
+
+#make column name more comprehensable and consistent
+noshows <-dplyr:::rename(noshows, patient_id = PatientId, 
+                              appointment_id = AppointmentID,
+                              appointment_date = AppointmentDay,
+                              age = Age, 
+                              scheduled_date = ScheduledDay,
+                              noshow = `No-show`)
+
+
+
+
+noshows <- noshows %>% mutate(showed_up = as.numeric(ifelse(noshow == "Yes", 0, 1))) %>% select(patient_id,appointment_id,appointment_date, age, scheduled_date, showed_up,SMS_received)
+
+#add column waiting_time that will contain the number of days that pased from the day the appointment was mada to the day when the appointment was supposed to take place
+noshows <- noshows %>% mutate(waiting_time=as.integer(difftime(as.POSIXct(appointment_date), as.POSIXct(scheduled_date), units="days")))
+
+
+#Observe that minimum values of age is -1 and the minimum value for waiting_time is -6 which makes no sense. Also, observe that maximum age is 115 years which seems unusual, but it is not impossible 
+
+#further investigation of these strange values
+
+negative_age <- filter(noshows, age < 0)
+
+#There is only one case with negative age. I will assume this is a mistake and remove it.
+
+negative_waiting_time <- filter(noshows, waiting_time <0)
+
+#There is only 5 cases with negative waiting_time and there is no observable pattern that would motivate further invastigation of these cases. Because there are only cases with this property it is unlikely that the information contained in them will have a significnat contribution to our analysis so I will remove them.
+#Since they are all no shows, it is possible that people mistakenly made appointments for past dates which made it impossible for them to attend the made appointment. Either way, 
+
+noshows <- filter(noshows, waiting_time >= 0, age >= 0)
+
+```
+
+
+
+
+$\\$
+
+
+
+## Data Wrangling
+
+```{r summary, tidy=TRUE, echo = FALSE, include=FALSE}
+
+summary(noshows)
+
+noshows %>%
+  group_by(SMS_received) %>%
+ summarize(show_up_rate = mean(showed_up)) %>%
+  mutate(SMS_received = ifelse(SMS_received == 0, "No", "Yes")) %>%
+  ggplot(aes(x = SMS_received, y = 100*show_up_rate)) +
+  geom_bar(stat="identity", aes(fill = SMS_received)) +
+  ggtitle("Showed Up Appointment Rate vs. Received SMS") +
+  labs(x = "", y="Showed Up Appointment Rate(%)",fill = "SMS received")+
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 1, 0.5, 2), "cm"))
+
+```
+$\\$
+Initial exploration of the data reveals that about 20% of all appointments contained in the data set were missed. Furthermore, those who received an SMS reminder showed up to their appointments 11% less often than those who did not receive an SMS remainder. This implies that SMS reminders decrease appointment adherence in patients, which seems counterintuitive. It is possible that there is a confounding reason for this strange cause. In order to discover whether this is the case, I will explore the data and investigate variables which I believe to be rlated to rate of missing apopointments. 
+
+
+#### Waiting Time ####
+
+I decided to investigate the relationship between attendance rate and waiting time, or the time between when the appointment was scheduled and the time when the appointment was supposed to take place. My hypothesis is that patients with longer waiting time will have lower attendance rates. There is a chance that an event of a higher priority will pop up and overlap with the appointment during the waiting time, and the longer the waiting time is the higher the chances that something like that will happen. Also, it is possible that patients with shorter waiting times are patients with more severe conditions which demand constant and urgent care, and it would be in their best interest to show up for their appointments regularly. 
+
+```{r tidy=TRUE, echo= FALSE}
+
+#histogram of waiting time
+noshows %>%
+ggplot(aes(x=waiting_time)) + 
+  geom_histogram(color = "white", fill="blue", binwidth=7)+
+  labs(x = "Waiting time(days)", y= "Number of Appintments") +
+  ggtitle("Histogram of Waiting Times") +
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"))
+
+
+#group by waiting time and add a coulumn for attendance rate and number of appointments with the given waiting time
+by_waiting_time <- noshows %>% 
+  group_by(waiting_time) %>% 
+  summarize(attended_appt_rate = mean(showed_up), num_attended=sum(showed_up), num_total=n())
+
+
+#scatter plot of Attendance Rate vs. Waitnig Time
+by_waiting_time %>%
+  ggplot(aes(y=attended_appt_rate,x=waiting_time)) +
+  geom_point(color = "red",size=0.5) +
+  labs(x = "Waiting time(days)", y= "Attendance rate") +
+  ggtitle("Attendance Rate vs. Waitnig Time") +
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"))
+```
+$\\$
+
+If we observe the histogram of waiting time , we can see that the majority of the patients waited under 60 days. There are far fewer data points from appointments that were scheduled more than 60 days in advance. This is why the average absence rate for some waiting times greater than 60 tends to be either 1% or 100%. In order to avoid influence of small number of appointments with waiting times greater than 60 I will filter them out.  
+$\\$
+
+```{r assessing the impact of removing points with high variance, include=FALSE, echo=FALSE, tidy=FALSE}
+#see how meny appointments have waiting time longer than 60
+dim(noshows %>% filter(waiting_time > 60))
+
+#see how many appointments have waiting time
+dim(noshows %>% filter(waiting_time <= 60))
+```
+
+```{r remove points with high variance, include=FALSE, echo=FALSE, tidy=FALSE}
+
+#remove the appointments with waiting time longer than 60
+noshows <- noshows %>% filter(waiting_time <= 60)
+by_waiting_time <- noshows %>% 
+  group_by(waiting_time) %>% summarize(attended_appt_rate = mean(showed_up), num_attended=sum(showed_up), num_total=n())
+
+
+summary(noshows)
+
+
+```
+
+
+
+
+
+```{r , improved graph, tidy=TRUE, echo=FALSE}
+
+by_waiting_time %>%
+  ggplot(aes(y=attended_appt_rate,x=waiting_time)) +
+  geom_point(color = "red") +
+  labs(x = "Waiting time(days)", y= "Attendance rate") +
+  ggtitle("Attendance Rate vs. Waitnig Time <= 60") +
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 2, 0.5, 1), "cm"))
+
+```
+
+$\\$
+After removing the problematic data points the scatter plot indicates that there is a weak negative correlation between the attendance rate and waiting time. That is, it seems the more the patient waits for the appointment the more likely he is to not show up. Furthermore, we can see that rate of appointment attendance is very high for appointments with waiting time 0. My guess would be that this is the case, because the appointments with waiting time 0 are mostly walk-in appointments so they are marked as attended by default.  
+
+After removing these points, the percentage of all appintments that were missed is still 20%.
+
+
+
+ 
+```{r ,tidy=TRUE, echo=FALSE, inlude = FALSE}
+
+
+noshows %>%
+  group_by(SMS_received) %>%
+  summarize(show_up_rate = mean(showed_up)) %>%
+  mutate(SMS_received = ifelse(SMS_received == 0, "No", "Yes")) %>%
+  ggplot(aes(x = SMS_received, y = 100*show_up_rate)) +
+  geom_bar(stat="identity", aes(fill = SMS_received)) +
+  ggtitle("Attendance Rate vs. Received SMS") +
+  labs(x = "", y="Attendance rate(%)",fill = "SMS received")+
+  geom_text(aes(label=round(show_up_rate*100)), vjust=2, color="white", size=5)+
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 2, 0.5, 2), "cm"))
+
+```
+$\\$
+ The attendance rate of appointments for which and SMS was not sent is still 11% higher than the attendance rate for those for which a reminder was sent. This indicates that small sample sizes for some of the waiting times were not the cause of the counterintuitive finding about the influence of SMS reminders on appointment adherence in patients. In order to explore whether this is actually true I will further explore data and try to find if there is a confounding cause for such a strange finding. 
+ 
+
+\pagebreak
+
+
+
+
+
+### Who are the SMS reminders sent to?
+
+
+Next I will investigate in what cases are the SMS reminders sent. I suspect that there will be only a few SMS reminders sent for appointments with waiting time 0, because most of those appointments are walk-in appointments so it would not make any sense to send a reminder for those. I also suspect there will be a positive relationship between the rate of sent SMS reminders and waiting times. 
+
+
+
+```{r When were SMS reminders sent, tidy=TRUE, echo=FALSE}
+
+# scatter plot of Sent SMS Rate vs. Waiting time 
+noshows %>%
+  group_by(waiting_time) %>%
+  summarize(sent_SMS_rate= mean(SMS_received))%>% 
+  ggplot(aes(x = waiting_time, y = 100*sent_SMS_rate)) +
+  geom_point(size=1, col= 'red') + 
+  ggtitle("Sent SMS Rate vs. Waiting time") +
+  labs(x = "Waiting time(days)", y="Sent SMS Rate")+
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 2, 0.5, 2), "cm"))
+```
+
+$\\$
+
+From the plot we can see that there is no reminders sent when the waiting time is 0 and 1. When the waiting time is 2 SMS reminders are sent about 30% of the time. For waiting times larger than 2 days, SMS reminders are sent more often, but the rate remains relatively constant throughout.  
+ 
+
+As I previously mentioned,it makes sense that no SMS would be sent reminders for appointments with waiting time 0 because most of them are probably walk-in appointments. It also makes sense that no SMS reminders are sent for appointments with waiting time 1 because they are scheduled for the next day and the time window for sending the reminders is very short. Moreover, if someone scheduled an appointment for tomorrow it would be redundant and unnecessary to send them a reminder a few hours later.  
+
+
+Given the fact that there was no SMS reminders sent to patients who waited 0 or 1 day for their appointments, those data points are irrelevant for judging the influence of SMS reminders on appointment adherence in patients. Therefore, I will remove them and recalculate.
+
+
+```{r removing waiting times with no SMS reminders, tidy=TRUE, echo = FALSE}
+#remove all points with waiting time 0 and 1 
+noshows <- noshows %>% filter(waiting_time>1)
+
+
+#scatter plot of Attendance Rate vs. Received SMS
+noshows %>% 
+  group_by(SMS_received)%>%
+  summarize(show_up_rate = mean(showed_up)) %>%
+  mutate(SMS_received = ifelse(SMS_received == 0, "No", "Yes")) %>%
+  ggplot(aes(x = SMS_received, y = 100*show_up_rate)) +
+  geom_bar(stat="identity", aes(fill = SMS_received)) +
+  ggtitle("Attendance Rate vs. Received SMS \n without waiting times 0 and 1 days") +
+  labs(x = "", y="Attendance Rate(%)",fill = "SMS received")+
+  geom_text(aes(label=round(show_up_rate*100)), vjust=2, color="white", size=5)+
+  theme(plot.title = element_text(size=15, face="bold", vjust=1, hjust=0.5, lineheight=0.8),
+        plot.background=element_rect(fill="lightblue"),
+         plot.margin = unit(c(0.5, 2, 0.5, 2), "cm"))
+
+
+```
+$\\$
+Here we can see that removing the appointments with waiting time 0 and 1, that is the walking appointments and the appointments scheduled for the following day, seems to have reversed the influence of receiving an SMS reminder on appointment adherence in patients. However, the difference in appointment rates doesn't seem to be big. 
+
+\pagebreak
+
+
+### Analyses: Two Proportional z-test
+
+In order to check whether this difference in attendance rates is statistically significant I will do a one-tailed two proportional z-test. 
+$H_0: \pi_{noSMS}-\pi_{SMS}=0$ i.e there is no difference between the true attendance rates of appointments for which an SMS reminder was sent and of those for which an SMS reminder was not sent.  
+$H_{A}: \pi_{noSMS} - \pi_{SMS} < 0$ the true attendance rates of appointments for which an SMS reminder was sent is greater than the true attendance rate of those for which an SMS reminder was not sent  
+$\alpha=0.05$  
+
+The assumptions for using Two Proportional z-test are the following are disscused in the Appendix.
+```{r proportional test, echo=FALSE}
+
+no_SMS <- noshows %>% filter(SMS_received==0) 
+no_SMS_attendance <- no_SMS$showed_up 
+with_SMS <- noshows %>% filter(SMS_received==1)
+with_SMS_attendance <- with_SMS$showed_up 
+
+
+
+num_trials_no_SMS <- length(no_SMS_attendance)
+success_no_SMS <- sum(no_SMS_attendance)
+
+
+num_trials_with_SMS <- length(with_SMS_attendance)
+success_with_SMS <- sum(with_SMS_attendance)
+
+
+prop.test(c(success_with_SMS, success_no_SMS),c(num_trials_with_SMS,num_trials_no_SMS),alternative = "greater")
+
+
+```
+
+
+The p-value is $2.2e-16$ which is less than our alpha level of .05. Thus we reject the null hypothesis and say that there is statistically significant evidence that SMS reminders have a positive influence on appointment adherence. The 95% confidence interval for the difference in rates is (0.04374189, 1.00000000). It seems like the difference between rates is not large, but even a small increase in chances that a patient will attend the scheduled appointment can add up over millions of appointments and have a positive impact on the health care system.   
+
+$\\$
+
+Looking back at the histogram of waiting time, the scatter plot of attendance rate vs. waiting time and the scatter plot of SMS Sent rate vs. waiting time can provide an explanation of the reversal in the relationship between the SMS reminders and appointment attendance. We see that the majority of the appointments have waiting time of 0 or 1 and very high attendance rates, making them very influential in assessing the behavior of patients. The fact that no SMS reminders were sent for appointments with those waiting times means that they will make it seem like a large number of patients who did not get an SMS reminder showed up to their appointment. However, given that there are no SMS reminders sent for appointments with these waiting times, they are not relevant for assessing the influence of SMS reminders on attendance rates and should not be included in the analysis of this relationship.  
+
+$\\$
+
+
+## Conclusion
+
+
+Based on the present findings we can conclude that sending SMS messages to remind patients of their appointments is a practice that should be continued and adopted by all medical institutions. Even though at first glance the difference between sending an SMS and not sending it seems small, given the scope of the problem and the severe repercussions of missed appointments this small difference makes a big impact. Given the importance of this issue I believe it would be highly beneficial to explore different factors that contribute to missing appointments, so that adequate responses can be implemented.
+
+We can also use this analysing as cautionary tale about how insufficient consideration of the data we are analysis and omitting key observations can lead to completely incorrect interpretations of the data.
+
+
